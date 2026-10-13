@@ -39,6 +39,12 @@ Après au moins cinq minutes de participation et avec au moins un objectif, un b
 
 Les points individuels alimentent le total collectif. À 60, 160, 300 et 500 points, le groupe débloque le camp de base, la forêt des idées, le col des possibles et la citadelle du savoir. Il n’y a ni classement entre membres ni perte de points.
 
+## Interface de jeu
+
+Le lobby, la fiche de joueur et la carte adoptent un univers rétro : paysage en pixel art, petit compagnon, fenêtres cobalt et boutons tactiles. Les points existants s’affichent en XP ; chaque tranche de 100 XP personnels ouvre un niveau. Quatre insignes reflètent les bilans, les objectifs terminés, les compagnons et la progression du groupe.
+
+Pendant une session, les jauges montrent l’avancement déclaré de chacun et de l’équipe. Terminer un objectif produit un retour bref ; le bilan affiche uniquement les XP réellement accordés par le serveur. Les animations respectent la préférence système de réduction des mouvements. Aucun champ ni écran obligatoire n’a été ajouté au parcours. Les choix et les ressources visuelles sont documentés dans [la direction graphique](docs/retro-design.md).
+
 ## Limites de cette première version
 
 - **Profil invité lié au navigateur**, conservé par cookie pendant un an : pas encore de connexion Discord, de récupération ou de synchronisation du compte entre appareils. Supprimer les cookies fait perdre l’accès à ce profil.

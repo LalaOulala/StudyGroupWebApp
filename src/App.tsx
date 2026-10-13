@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  BookOpen,
-  CalendarDays,
-  ChartNoAxesColumnIncreasing,
-  Map,
-  Link,
-  ChevronRight,
-} from "lucide-react";
+import { Gamepad2, UserRound, Map, Link, ChevronRight } from "lucide-react";
+import { GameLogo } from "./components/GameUI";
+import { playerProgress } from "./game";
 import { api, errorMessage } from "./api";
 import type { Bootstrap } from "./types";
 import { Avatar, Loading, ErrorNote } from "./components/UI";
@@ -64,13 +59,13 @@ export function App() {
   }
   const sessionId = path.match(/^\/sessions\/([\w-]{16})\/?$/)?.[1];
   const nav = [
-    { name: "Sessions", path: "/", icon: CalendarDays },
+    { name: "Le lobby", path: "/", icon: Gamepad2 },
     {
-      name: "Ma progression",
+      name: "Mon joueur",
       path: "/progression",
-      icon: ChartNoAxesColumnIncreasing,
+      icon: UserRound,
     },
-    { name: "L’expédition", path: "/expedition", icon: Map },
+    { name: "La carte", path: "/expedition", icon: Map },
   ];
   if (!data)
     return (
@@ -92,14 +87,18 @@ export function App() {
       <a className="skip-link" href="#main">
         Aller au contenu
       </a>
-      <aside className="sidebar">
+      <header className="app-header">
         <button
           className="brand"
           onClick={() => navigate("/")}
           aria-label="Study Group, accueil"
         >
-          <BookOpen size={35} strokeWidth={1.5} />
-          <span>Study Group</span>
+          <GameLogo />
+          <span>
+            STUDY
+            <br />
+            GROUP
+          </span>
         </button>
         <nav aria-label="Navigation principale">
           {nav.map(({ name, path: target, icon: Icon }) => (
@@ -133,18 +132,24 @@ export function App() {
           {data.user ? (
             <Avatar user={data.user} />
           ) : (
-            <span className="avatar sage">?</span>
+            <Avatar user={{ name: "?", color: "sky" }} />
           )}
-          <span>{data.user?.name ?? "Mon profil"}</span>
+          <span>
+            <strong>
+              NIV.{" "}
+              {String(playerProgress(data.stats.xp).level).padStart(2, "0")}
+            </strong>
+            <small>{data.user?.name ?? "Mon profil"}</small>
+          </span>
           <ChevronRight size={17} />
         </button>
-      </aside>
+      </header>
       <main
         id="main"
         tabIndex={-1}
         className={`main-content ${sessionId ? "session-page" : ""}`}
       >
-        <div className="topbar">
+        <div className={`topbar ${path === "/" ? "lobby-topbar" : ""}`}>
           <button className="text-link" onClick={() => setModal("join")}>
             <Link size={19} />
             Rejoindre avec un lien
@@ -163,9 +168,14 @@ export function App() {
         ) : path === "/progression" ? (
           <Progress data={data} navigate={navigate} onCreate={create} />
         ) : path === "/expedition" ? (
-          <Expedition data={data} />
+          <Expedition data={data} onCreate={create} />
         ) : path === "/" ? (
-          <Home data={data} navigate={navigate} onCreate={create} />
+          <Home
+            data={data}
+            navigate={navigate}
+            onCreate={create}
+            onJoin={() => setModal("join")}
+          />
         ) : (
           <div className="fatal">
             <h1>Ce chemin reste à explorer.</h1>
@@ -174,7 +184,11 @@ export function App() {
             </button>
           </div>
         )}
-        <footer>Chacun son rythme. Une aventure commune.</footer>
+        <footer>
+          <span />
+          Chacun son rythme. Même équipe.
+          <span />
+        </footer>
       </main>
       {modal === "profile" && (
         <ProfileForm

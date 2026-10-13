@@ -31,22 +31,19 @@ export function ProfileForm({
     }
   }
   return (
-    <Modal
-      title={user ? "Votre profil" : "Bienvenue dans l’aventure."}
-      onClose={onClose}
-    >
+    <Modal title={user ? "Ton profil" : "Nouveau joueur"} onClose={onClose}>
       <p className="modal-description">
         {user
-          ? "Un nom et une couleur pour vous retrouver."
-          : "Choisissez le pseudo que votre groupe reconnaîtra."}
+          ? "Ton pseudo et ta couleur dans l’équipe."
+          : "Choisis le pseudo que ton groupe reconnaîtra."}
       </p>
       <form onSubmit={submit}>
         <div className="profile-preview">
           <Avatar user={{ name: name || "?", color }} />
-          <span>{name || "Votre pseudo"}</span>
+          <span>{name || "Ton pseudo"}</span>
         </div>
         <label>
-          Votre pseudo
+          Ton pseudo
           <input
             autoFocus
             required
@@ -58,7 +55,7 @@ export function ProfileForm({
           />
         </label>
         <fieldset className="colors">
-          <legend>Votre couleur</legend>
+          <legend>Ta couleur</legend>
           {(["sage", "clay", "sky", "lavender", "gold"] as Color[]).map(
             (c, i) => (
               <button
@@ -77,8 +74,8 @@ export function ProfileForm({
           )}
         </fieldset>
         <p className="hint">
-          Profil invité conservé sur ce navigateur. Gardez ses données pour
-          retrouver votre progression. La connexion Discord arrivera plus tard.
+          Profil invité conservé dans ce navigateur. Garde ses données pour
+          retrouver tes XP. La connexion Discord arrivera plus tard.
         </p>
         <ErrorNote message={error} />
         <button className="button primary wide" disabled={busy || !name.trim()}>
@@ -127,7 +124,7 @@ export function CreateForm({
   return (
     <Modal title="Une nouvelle quête." onClose={onClose}>
       <p className="modal-description">
-        Fixez le rendez-vous. Chacun apportera ses objectifs.
+        Fixe le rendez-vous. Chacun apporte ses propres quêtes.
       </p>
       <form onSubmit={submit}>
         <label>
@@ -175,8 +172,8 @@ export function CreateForm({
           />
         </label>
         <p className="hint">
-          Le minuteur démarre à la création. Rejoignez votre vocal habituel dans
-          Discord, puis partagez le lien de la session.
+          Le minuteur démarre à la création. Rejoins ton vocal dans Discord,
+          puis partage le lien de la session.
         </p>
         <ErrorNote message={error} />
         <button
@@ -220,7 +217,7 @@ export function JoinForm({
     onJoin(id);
   }
   return (
-    <Modal title="Retrouvez votre équipe." onClose={onClose}>
+    <Modal title="Retrouve ton équipe" onClose={onClose}>
       <form onSubmit={submit}>
         <label>
           Lien ou code de la session
@@ -229,7 +226,7 @@ export function JoinForm({
             required
             value={link}
             onChange={(e) => setLink(e.target.value)}
-            placeholder="Collez le lien partagé dans Discord"
+            placeholder="Colle le lien partagé dans Discord"
           />
         </label>
         <ErrorNote message={error} />
@@ -253,8 +250,8 @@ export function ShareForm({
   return (
     <Modal title="L’aventure se partage." onClose={onClose}>
       <p className="modal-description">
-        Envoyez ce lien aux personnes avec qui vous voulez travailler. Elles
-        pourront rejoindre et consulter les objectifs du groupe.
+        Partage ce lien avec tes coéquipiers. Ils pourront rejoindre la session
+        et consulter les objectifs du groupe.
       </p>
       <label>
         Lien d’invitation

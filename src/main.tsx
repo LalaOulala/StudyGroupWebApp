@@ -3,11 +3,13 @@ import ReactDOM from "react-dom/client";
 import "@fontsource/dm-sans/400.css";
 import "@fontsource/dm-sans/500.css";
 import "@fontsource/dm-sans/600.css";
-import "@fontsource/lora/400.css";
-import "@fontsource/lora/500.css";
-import "@fontsource/lora/600.css";
+import "@fontsource/anton/latin-400.css";
+import "@fontsource/bungee/latin-400.css";
+import "@fontsource/vt323/latin-400.css";
+
 import "./styles.css";
 import { App } from "./App";
+import { FeedbackProvider } from "./components/GameUI";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -37,7 +39,9 @@ class ErrorBoundary extends React.Component<
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <FeedbackProvider>
+        <App />
+      </FeedbackProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 );

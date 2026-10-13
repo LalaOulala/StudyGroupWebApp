@@ -16,6 +16,13 @@ import {
 import { api, errorMessage } from "../api";
 import { Avatar, ErrorNote, Loading, Modal } from "../components/UI";
 import { ShareForm } from "../components/Forms";
+import {
+  WindowBar,
+  Meter,
+  RewardStamp,
+  useFeedback,
+} from "../components/GameUI";
+import { questProgress } from "../game";
 import type {
   Participant,
   Session as SessionData,
@@ -82,6 +89,19 @@ function TaskRow({
   onDelete: (id: string) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const celebrate = useFeedback();
+  async function updateStatus(status: TaskStatus) {
+    const saved = await onUpdate(task.id, { status });
+    if (saved && status === "done" && task.status !== "done") {
+      setCompleted(true);
+      celebrate({
+        title: "Quête accomplie !",
+        detail: "Un objectif de plus pour l’équipe.",
+        kind: "quest",
+      });
+    }
+  }
   const [title, setTitle] = useState(task.title);
   const [busy, setBusy] = useState(false);
   async function run(fn: () => Promise<unknown>) {
@@ -93,16 +113,40 @@ function TaskRow({
     }
   }
   return (
-    <li className={`task-row status-${task.status}`}>
-      <span className="task-status-icon">
-        {task.status === "done" ? (
-          <Check size={16} />
-        ) : task.status === "blocked" ? (
-          <Flag size={14} />
-        ) : (
-          <span />
-        )}
-      </span>
+    <li
+      className={`task-row status-${task.status} ${completed ? "quest-complete" : ""}`}
+      onAnimationEnd={() => setCompleted(false)}
+    >
+      {editable ? (
+        <button
+          className="task-status-icon"
+          disabled={busy}
+          aria-label={`${task.status === "done" ? "Remettre à faire" : "Terminer"} : ${task.title}`}
+          onClick={() =>
+            void run(() =>
+              updateStatus(task.status === "done" ? "todo" : "done"),
+            )
+          }
+        >
+          {task.status === "done" ? (
+            <Check size={16} />
+          ) : task.status === "blocked" ? (
+            <Flag size={14} />
+          ) : (
+            <span />
+          )}
+        </button>
+      ) : (
+        <span className="task-status-icon" aria-hidden="true">
+          {task.status === "done" ? (
+            <Check size={16} />
+          ) : task.status === "blocked" ? (
+            <Flag size={14} />
+          ) : (
+            <span />
+          )}
+        </span>
+      )}
       {editing ? (
         <form
           className="task-edit"
@@ -139,7 +183,7 @@ function TaskRow({
             value={task.status}
             disabled={busy}
             onChange={(e) =>
-              void run(() => onUpdate(task.id, { status: e.target.value }))
+              void run(() => updateStatus(e.target.value as TaskStatus))
             }
           >
             {statuses.map((s) => (
@@ -224,74 +268,87 @@ function ParticipantCard({
   const done = participant.tasks.filter((t) => t.status === "done").length;
   return (
     <article className={`participant-card ${mine ? "mine" : ""}`}>
-      <div className="participant-heading">
-        <Avatar user={participant} />
-        <div>
-          <h3>
-            {participant.name} {mine && <span>vous</span>}
-          </h3>
-          <p>
-            {reviewed
-              ? "Bilan partagé"
-              : owner
-                ? "Organisateur · En session"
-                : "En session"}
-          </p>
-        </div>
-        <span className="participant-count">
-          {reviewed ? (
-            <span className="xp-chip">+{participant.earned} pts</span>
-          ) : (
-            `${done}/${participant.tasks.length}`
-          )}
-        </span>
-      </div>
-      {participant.tasks.length ? (
-        <ul className="task-list">
-          {participant.tasks.map((t) => (
-            <TaskRow
-              key={t.id}
-              task={t}
-              editable={mine && !reviewed}
-              onUpdate={(id, body) => mutate(`/${id}`, body, "PATCH")}
-              onDelete={(id) => mutate(`/${id}`, {}, "DELETE")}
-            />
-          ))}
-        </ul>
-      ) : (
-        <p className="no-goals">
-          {mine
-            ? "Quelle petite victoire visez-vous aujourd’hui ?"
-            : "Prépare ses objectifs…"}
-        </p>
-      )}
-      {mine && !reviewed && active && participant.tasks.length < 8 && (
-        <form className="add-task" onSubmit={add}>
-          <Plus size={18} />
-          <input
-            aria-label="Nouvel objectif"
-            required
-            maxLength={160}
-            placeholder="Ajouter un objectif concret…"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <button className="text-button" disabled={busy || !title.trim()}>
-            {busy ? "…" : "Ajouter"}
-          </button>
-        </form>
-      )}
-      {reviewed && (
-        <div className="reflection">
-          <CheckCircle2 size={17} />
+      <WindowBar tone={mine ? "blue" : "green"}>
+        {mine ? "Tes quêtes" : "Coéquipier"}
+        {reviewed ? " · Bilan partagé" : ""}
+      </WindowBar>
+      <div className="participant-body">
+        <div className="participant-heading">
+          <Avatar user={participant} />
           <div>
-            <strong>Le petit bilan</strong>
+            <h3>
+              {participant.name} {mine && <span>vous</span>}
+            </h3>
             <p>
-              {participant.reflection || "Une étape de plus dans l’aventure."}
+              {reviewed
+                ? "Bilan partagé"
+                : owner
+                  ? "Organisateur · En session"
+                  : "En session"}
             </p>
           </div>
+          <span className="participant-count">
+            {reviewed ? (
+              <span className="xp-chip">+{participant.earned} XP</span>
+            ) : (
+              `${done}/${participant.tasks.length}`
+            )}
+          </span>
         </div>
-      )}
+        <div className="personal-meter">
+          <Meter
+            value={questProgress(participant.tasks)}
+            label={`Avancement de ${participant.name}`}
+          />
+          <span>{questProgress(participant.tasks)} % d’avancement déclaré</span>
+        </div>
+        {participant.tasks.length ? (
+          <ul className="task-list">
+            {participant.tasks.map((t) => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                editable={mine && !reviewed}
+                onUpdate={(id, body) => mutate(`/${id}`, body, "PATCH")}
+                onDelete={(id) => mutate(`/${id}`, {}, "DELETE")}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="no-goals">
+            {mine
+              ? "Quelle petite victoire vises-tu aujourd’hui ?"
+              : "Prépare ses objectifs…"}
+          </p>
+        )}
+        {mine && !reviewed && active && participant.tasks.length < 8 && (
+          <form className="add-task" onSubmit={add}>
+            <Plus size={18} />
+            <input
+              aria-label="Nouvel objectif"
+              required
+              maxLength={160}
+              placeholder="Ajouter un objectif concret…"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <button className="text-button" disabled={busy || !title.trim()}>
+              {busy ? "…" : "Ajouter"}
+            </button>
+          </form>
+        )}
+        {reviewed && (
+          <div className="reflection">
+            <CheckCircle2 size={17} />
+            <div>
+              <strong>Le petit bilan</strong>
+              <p>
+                {participant.reflection || "Une étape de plus dans l’aventure."}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </article>
   );
 }
@@ -309,6 +366,7 @@ export function Session({
   ensureProfile: (action: () => void) => void;
   onRefresh: () => Promise<void>;
 }) {
+  const celebrate = useFeedback();
   const [session, setSession] = useState<SessionData | null>(null);
   const [error, setError] = useState("");
   const [fatal, setFatal] = useState("");
@@ -345,10 +403,26 @@ export function Session({
     setBusy(true);
     setError("");
     try {
-      await api(`/sessions/${id}/${path}`, body);
+      const result = await api<{ earned?: number }>(
+        `/sessions/${id}/${path}`,
+        body,
+      );
       await load();
       await onRefresh();
       after?.();
+      if (path === "review") {
+        const earned = result.earned ?? 0;
+        celebrate({
+          title:
+            earned > 0 ? "Bien joué, l’équipe avance !" : "Une étape de plus.",
+          detail:
+            earned > 0
+              ? "Tes XP rejoignent l’expédition collective."
+              : "Ton bilan est sauvegardé dans ton carnet.",
+          kind: "reward",
+          amount: earned,
+        });
+      }
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -386,8 +460,8 @@ export function Session({
             {session.participantCount > 1 ? "s" : ""}
           </p>
           <p>
-            Une place vous attend. Rejoignez l’équipe pour partager vos
-            objectifs et avancer ensemble.
+            Une place t’attend. Rejoins l’équipe pour partager tes objectifs et
+            avancer ensemble.
           </p>
           <ErrorNote message={error} />
           {session.status === "active" ? (
@@ -422,7 +496,7 @@ export function Session({
     <>
       <button className="back-link" onClick={() => navigate("/")}>
         <ArrowLeft size={16} />
-        Toutes les sessions
+        Retour au lobby
       </button>
       <header className="session-title">
         <div>
@@ -454,32 +528,78 @@ export function Session({
       )}
       <ErrorNote message={error || fatal} />
       {session.note && <p className="session-intention">« {session.note} »</p>}
+      <div className="team-hud">
+        <div className="team-identity">
+          <div>
+            {participants.slice(0, 3).map((p) => (
+              <Avatar key={p.id} user={p} small />
+            ))}
+          </div>
+          <div>
+            <strong>
+              {active ? "Équipe en mission" : "Mission sauvegardée"}
+            </strong>
+            <small>
+              {participants.length} joueur{participants.length > 1 ? "s" : ""} ·
+              Même équipe
+            </small>
+          </div>
+        </div>
+        <div className="team-progress">
+          <div>
+            <span>AVANCÉE COLLECTIVE</span>
+            <strong>
+              {questProgress(participants.flatMap((p) => p.tasks))} %
+            </strong>
+          </div>
+          <Meter
+            value={questProgress(participants.flatMap((p) => p.tasks))}
+            label="Avancée collective des objectifs"
+          />
+        </div>
+        <div className="team-score">
+          <Flag size={23} />
+          <span>
+            <strong>
+              {
+                participants
+                  .flatMap((p) => p.tasks)
+                  .filter((t) => t.status === "done").length
+              }{" "}
+              / {participants.flatMap((p) => p.tasks).length}
+            </strong>{" "}
+            quêtes terminées
+          </span>
+        </div>
+      </div>
       <div className="session-layout">
         <section>
           <div className="section-label">
             <h2>Les quêtes de l’équipe</h2>
             <span>Chacun son rythme</span>
           </div>
-          {sorted.map((p) => (
-            <ParticipantCard
-              key={p.id}
-              participant={p}
-              mine={p.id === user?.id}
-              owner={p.id === session.ownerId}
-              active={active}
-              sessionId={id}
-              onChange={load}
-              onError={setError}
-            />
-          ))}
+          <div className="participants-grid">
+            {sorted.map((p) => (
+              <ParticipantCard
+                key={p.id}
+                participant={p}
+                mine={p.id === user?.id}
+                owner={p.id === session.ownerId}
+                active={active}
+                sessionId={id}
+                onChange={load}
+                onError={setError}
+              />
+            ))}
+          </div>
         </section>
         <aside className="session-rail">
           <div className="timer-panel">
             <Timer endsAt={session.endsAt} ended={!active} offset={offset} />
             <p>
               {active
-                ? "Un objectif à la fois. Vous êtes au bon endroit."
-                : "Prenez un instant pour regarder le chemin parcouru."}
+                ? "Un objectif à la fois."
+                : "Regarde le chemin parcouru."}
             </p>
             {owner && active && (
               <button
@@ -494,11 +614,11 @@ export function Session({
           </div>
           {me?.reviewedAt === null ? (
             <div className="review-panel">
-              <h3>Votre prochaine étape</h3>
+              <h3>Chaque pas compte.</h3>
               <p>
                 {active
-                  ? "Quand vous avez terminé, partagez votre avancée avec le groupe."
-                  : "Mettez à jour vos objectifs, puis partagez votre bilan."}
+                  ? "Tes avancées se transforment en XP au bilan."
+                  : "Mets à jour tes objectifs, puis partage ton bilan."}
               </p>
               <button
                 className="button primary wide"
@@ -511,12 +631,12 @@ export function Session({
           ) : (
             <div className="review-panel success">
               <CheckCircle2 size={25} />
-              <h3>Une étape accomplie.</h3>
+              <h3>Bien joué !</h3>
               <p>
-                Votre bilan est enregistré.
-                <br />
-                <strong>+{me?.earned ?? 0} points</strong> pour l’expédition.
+                Ton bilan est enregistré. Tes efforts rejoignent l’aventure
+                commune.
               </p>
+              <RewardStamp earned={me?.earned ?? 0} />
               <button
                 className="text-link"
                 onClick={() => navigate("/progression")}
@@ -529,8 +649,8 @@ export function Session({
           <div className="rail-note">
             <Users size={18} />
             <p>
-              Rejoignez <strong>{session.room}</strong> dans Discord. Le vocal
-              et le site fonctionnent séparément pour le moment.
+              Rejoins <strong>{session.room}</strong> dans Discord. Le vocal
+              reste indépendant du site.
             </p>
           </div>
           {owner && active && (
@@ -571,8 +691,8 @@ export function Session({
       {modal === "review" && (
         <Modal title="Chaque pas compte." onClose={() => setModal(null)}>
           <p className="modal-description">
-            Votre bilan termine votre participation. Les autres peuvent
-            continuer à leur rythme.
+            Ton bilan termine ta participation. Les autres peuvent continuer à
+            leur rythme.
           </p>
           <form
             onSubmit={(e) => {
@@ -594,8 +714,7 @@ export function Session({
               )}
             </div>
             <label>
-              Qu’avez-vous envie de retenir ?{" "}
-              <span className="optional">facultatif</span>
+              Que veux-tu retenir ? <span className="optional">facultatif</span>
               <textarea
                 autoFocus
                 rows={3}
